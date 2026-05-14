@@ -58,14 +58,19 @@
                         <Button x:Name="BtnSetDays" Content="设置天数" Foreground="White" Background="#555" Margin="1"/>
                         <Button x:Name="BtnAppearance" Content="外观设置" Foreground="White" Background="#555" Margin="1"/>
 
-                        <!-- 🔥 文字淡浓 滑动块 -->
+                        <!-- 文字淡浓 滑动块 -->
                         <TextBlock Text="文字透明度" Foreground="White" Margin="2,5,0,2" FontSize="12"/>
                         <Slider x:Name="sliderOpacity" Value="{Binding TextOpacity}" 
                                 Minimum="0.2" Maximum="1.0" Width="160" Margin="3"/>
 
                         <Button x:Name="BtnBackupData" Content="备份数据" Foreground="White" Background="#555" Margin="1"/>
                         <Button x:Name="BtnRestoreData" Content="恢复备份" Foreground="White" Background="#555" Margin="1"/>
-                        <CheckBox x:Name="chkAutoStart" Content="开机启动" Foreground="White" Margin="5,2"/>
+
+                        <!-- 开机启动复选框 - 已添加事件绑定 -->
+                        <CheckBox x:Name="chkAutoStart" Content="开机启动" Foreground="White" Margin="5,2"
+                                  Checked="chkAutoStart_Checked" 
+                                  Unchecked="chkAutoStart_Unchecked"/>
+
                         <Button x:Name="BtnExit" Content="退出" Foreground="White" Background="#993333" Margin="1"/>
                     </StackPanel>
                 </Border>

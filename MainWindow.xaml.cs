@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,6 +25,7 @@ namespace DesktopPlanWidget
 
         private int _showDays = 7;
         private const string PLAN_FILE = "plans.txt";
+        private const string AutoStartRegName = "DesktopPlanWidget";
 
         private string _titleColor = "#FFFFFF";
         private string _dateColor = "#FFCC00";
@@ -50,7 +52,6 @@ namespace DesktopPlanWidget
             set { _contentBrush = value; OnPropertyChanged(nameof(ContentBrush)); }
         }
 
-        // 🔥 文字透明度
         private double _textOpacity = 1.0;
         public double TextOpacity
         {
@@ -69,7 +70,6 @@ namespace DesktopPlanWidget
         private const uint SWP_NOSIZE = 1, SWP_NOMOVE = 2, SWP_NOACTIVATE = 16;
         private static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
         private const int VK_CONTROL = 0x11;
-        private const string AutoStartRegName = "桌面提醒.exe";
 
         public MainWindow()
         {
@@ -79,7 +79,6 @@ namespace DesktopPlanWidget
             LoadColorToPlanFile();
             ApplyColor();
 
-            // 透明度滑动
             sliderOpacity.ValueChanged += (s, e) => { TextOpacity = sliderOpacity.Value; SaveColorToPlanFile(); };
 
             btnSettings.Click += (s, e) => settingPopup.IsOpen = true;
@@ -89,6 +88,9 @@ namespace DesktopPlanWidget
             BtnExit.Click += (s, e) => Close();
             BtnBackupData.Click += (s, e) => BackupData();
             BtnRestoreData.Click += (s, e) => RestoreData();
+
+            chkAutoStart.Checked += chkAutoStart_Checked;
+            chkAutoStart.Unchecked += chkAutoStart_Unchecked;
 
             CompositionTarget.Rendering += (s, e) =>
             {
@@ -113,7 +115,16 @@ namespace DesktopPlanWidget
                 SetWindowLong(h, GWL_EXSTYLE, GetWindowLong(h, GWL_EXSTYLE) | WS_EX_LAYERED);
                 SetWindowToTopRight();
                 RefreshList();
-                LoadAutoStartCheck();
+
+                // 静默同步，不弹任何窗口
+                bool isExist = CheckAutoStartExist();
+                chkAutoStart.IsChecked = isExist;
+
+                if (!isExist)
+                {
+                    SetAutoStart(true, false);
+                    chkAutoStart.IsChecked = true;
+                }
             };
         }
 
@@ -339,7 +350,6 @@ namespace DesktopPlanWidget
                 _ => ""
             };
 
-            // 🔥 这里增加了 HH:mm 显示时分
             return $"{dt:yyyy-MM-dd HH:mm} {monthNames[m]} {day} {week}";
         }
 
@@ -351,36 +361,58 @@ namespace DesktopPlanWidget
             RefreshList();
         }
 
-        #region 开机自启
-        private void SetAutoStart(bool isOpen)
+        #region 开机自启（最终无弹窗版）
+        private bool CheckAutoStartExist()
         {
             try
             {
-                string exe = Process.GetCurrentProcess().MainModule.FileName;
-                using var k = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-                if (isOpen) k.SetValue(AutoStartRegName, $"\"{exe}\"");
-                else k.DeleteValue(AutoStartRegName, false);
-                LoadAutoStartCheck();
+                using (var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false))
+                {
+                    return key?.GetValue(AutoStartRegName) != null;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void SetAutoStart(bool isOpen, bool showMessage = false)
+        {
+            try
+            {
+                string exePath = Process.GetCurrentProcess().MainModule.FileName;
+
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
+                {
+                    if (key == null) return;
+
+                    if (isOpen)
+                    {
+                        key.SetValue(AutoStartRegName, exePath);
+                    }
+                    else
+                    {
+                        if (key.GetValue(AutoStartRegName) != null)
+                            key.DeleteValue(AutoStartRegName);
+                    }
+                }
             }
             catch { }
         }
 
-        private void LoadAutoStartCheck()
+        private void chkAutoStart_Checked(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                using var k = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
-                chkAutoStart.IsChecked = k.GetValue(AutoStartRegName) != null;
-            }
-            catch { chkAutoStart.IsChecked = false; }
+            SetAutoStart(true, false);
         }
 
-        private void chkAutoStart_Checked(object sender, RoutedEventArgs e) => SetAutoStart(true);
-        private void chkAutoStart_Unchecked(object sender, RoutedEventArgs e) => SetAutoStart(false);
+        private void chkAutoStart_Unchecked(object sender, RoutedEventArgs e)
+        {
+            SetAutoStart(false, false);
+        }
         #endregion
 
         #region 备份恢复
-
         private void BackupData()
         {
             SaveFileDialog d = new SaveFileDialog
@@ -404,19 +436,13 @@ namespace DesktopPlanWidget
             {
                 try
                 {
-                    // 恢复文件
                     DataHelper.RestoreAll(d.FileName);
-
-                    // 🔥 强制重新读取所有数据（关键修复！）
                     LoadColorToPlanFile();
                     ApplyColor();
                     sliderOpacity.Value = _textOpacity;
-
-                    // 清空列表再刷新 → 数据必现！
                     lstPlan.ItemsSource = null;
                     RefreshList();
-
-                    MessageBox.Show("恢复成功！\n数据 + 颜色 + 天数 + 透明度已全部还原", "成功");
+                    MessageBox.Show("恢复成功！", "成功");
                 }
                 catch
                 {
@@ -424,7 +450,6 @@ namespace DesktopPlanWidget
                 }
             }
         }
-
         #endregion
     }
 
