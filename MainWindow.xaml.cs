@@ -1,17 +1,16 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
-using Microsoft.Win32;
 
 namespace DesktopPlanWidget
 {
@@ -24,33 +23,16 @@ namespace DesktopPlanWidget
         }
 
         private int _showDays = 7;
-        private const string PLAN_FILE = "plans.txt";
         private const string AutoStartRegName = "DesktopPlanWidget";
+        private DispatcherTimer _midnightTimer;
 
         private string _titleColor = "#FFFFFF";
         private string _dateColor = "#FFCC00";
         private string _contentColor = "#FFFFFF";
 
-        private SolidColorBrush _titleBrush;
-        public SolidColorBrush TitleBrush
-        {
-            get => _titleBrush;
-            set { _titleBrush = value; OnPropertyChanged(nameof(TitleBrush)); }
-        }
-
-        private SolidColorBrush _dateBrush;
-        public SolidColorBrush DateBrush
-        {
-            get => _dateBrush;
-            set { _dateBrush = value; OnPropertyChanged(nameof(DateBrush)); }
-        }
-
-        private SolidColorBrush _contentBrush;
-        public SolidColorBrush ContentBrush
-        {
-            get => _contentBrush;
-            set { _contentBrush = value; OnPropertyChanged(nameof(ContentBrush)); }
-        }
+        public SolidColorBrush TitleBrush { get; set; }
+        public SolidColorBrush DateBrush { get; set; }
+        public SolidColorBrush ContentBrush { get; set; }
 
         private double _textOpacity = 1.0;
         public double TextOpacity
@@ -65,7 +47,7 @@ namespace DesktopPlanWidget
         [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vKey);
 
         private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_LAYERED = 0x0008000;
+        private const int WS_EX_LAYERED = 0x00080000;
         private const int WS_EX_TRANSPARENT = 0x00000020;
         private const uint SWP_NOSIZE = 1, SWP_NOMOVE = 2, SWP_NOACTIVATE = 16;
         private static readonly IntPtr HWND_BOTTOM = new IntPtr(1);
@@ -75,12 +57,10 @@ namespace DesktopPlanWidget
         {
             InitializeComponent();
             DataContext = this;
-
-            LoadColorToPlanFile();
+            LoadConfig();
             ApplyColor();
 
-            sliderOpacity.ValueChanged += (s, e) => { TextOpacity = sliderOpacity.Value; SaveColorToPlanFile(); };
-
+            sliderOpacity.ValueChanged += (s, e) => { TextOpacity = sliderOpacity.Value; SaveConfig(); };
             btnSettings.Click += (s, e) => settingPopup.IsOpen = true;
             BtnOpenManage.Click += (s, e) => OpenManage();
             BtnSetDays.Click += (s, e) => SetDays();
@@ -89,14 +69,26 @@ namespace DesktopPlanWidget
             BtnBackupData.Click += (s, e) => BackupData();
             BtnRestoreData.Click += (s, e) => RestoreData();
 
-            chkAutoStart.Checked += chkAutoStart_Checked;
-            chkAutoStart.Unchecked += chkAutoStart_Unchecked;
+            Loaded += (s, e) =>
+            {
+                var h = new WindowInteropHelper(this).Handle;
+                SetWindowPos(h, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+                SetWindowLong(h, GWL_EXSTYLE, GetWindowLong(h, GWL_EXSTYLE) | WS_EX_LAYERED);
+                SetWindowToTopRight();
+                DataHelper.GenerateNextRepeatPlans();
+                RefreshList();
+                StartMidnightTimer();
+                SyncAutoStart();
+            };
 
             CompositionTarget.Rendering += (s, e) =>
             {
                 var h = new WindowInteropHelper(this).Handle;
                 int style = GetWindowLong(h, GWL_EXSTYLE);
-                if (GetAsyncKeyState(VK_CONTROL) < 0)
+                bool isCtrlDown = GetAsyncKeyState(VK_CONTROL) < 0;
+                bool isPopupOpen = settingPopup.IsOpen;
+
+                if (isCtrlDown || isPopupOpen)
                 {
                     if ((style & WS_EX_TRANSPARENT) != 0)
                         SetWindowLong(h, GWL_EXSTYLE, style & ~WS_EX_TRANSPARENT);
@@ -107,122 +99,43 @@ namespace DesktopPlanWidget
                         SetWindowLong(h, GWL_EXSTYLE, style | WS_EX_TRANSPARENT);
                 }
             };
+        }
 
-            Loaded += (s, e) =>
+        private void StartMidnightTimer()
+        {
+            _midnightTimer = new DispatcherTimer();
+            _midnightTimer.Interval = TimeSpan.FromMinutes(1);
+            _midnightTimer.Tick += (s, e) =>
             {
-                var h = new WindowInteropHelper(this).Handle;
-                SetWindowPos(h, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
-                SetWindowLong(h, GWL_EXSTYLE, GetWindowLong(h, GWL_EXSTYLE) | WS_EX_LAYERED);
-                SetWindowToTopRight();
-                RefreshList();
-
-                // 静默同步，不弹任何窗口
-                bool isExist = CheckAutoStartExist();
-                chkAutoStart.IsChecked = isExist;
-
-                if (!isExist)
+                if (DateTime.Now.Hour == 1 && DateTime.Now.Minute == 0)
                 {
-                    SetAutoStart(true, false);
-                    chkAutoStart.IsChecked = true;
+                    DataHelper.GenerateNextRepeatPlans();
+                    RefreshList();
                 }
             };
+            _midnightTimer.Start();
         }
 
-        #region 颜色 + 天数 + 透明度 配置
-        private void LoadColorToPlanFile()
+        private void LoadConfig()
         {
-            try
-            {
-                if (!File.Exists(PLAN_FILE))
-                {
-                    _showDays = 7;
-                    _textOpacity = 1.0;
-                    return;
-                }
-
-                var lines = File.ReadAllLines(PLAN_FILE);
-                foreach (var line in lines)
-                {
-                    if (line.StartsWith("[COLOR]"))
-                    {
-                        var parts = line.Split('|');
-                        if (parts.Length >= 4)
-                        {
-                            _titleColor = parts[1];
-                            _dateColor = parts[2];
-                            _contentColor = parts[3];
-                        }
-                    }
-                    if (line.StartsWith("[DAYS]"))
-                    {
-                        var parts = line.Split('|');
-                        if (parts.Length >= 2 && int.TryParse(parts[1], out int d))
-                        {
-                            _showDays = d;
-                        }
-                    }
-                    if (line.StartsWith("[OPACITY]"))
-                    {
-                        var parts = line.Split('|');
-                        if (parts.Length >= 2 && double.TryParse(parts[1], out double op))
-                        {
-                            _textOpacity = op;
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                _showDays = 7;
-                _textOpacity = 1.0;
-            }
+            var cfg = DataHelper.GetConfig();
+            _showDays = cfg.ShowDays;
+            TextOpacity = cfg.TextOpacity;
+            _titleColor = cfg.TitleColor;
+            _dateColor = cfg.DateColor;
+            _contentColor = cfg.ContentColor;
+            sliderOpacity.Value = TextOpacity;
         }
 
-        private void SaveColorToPlanFile()
+        private void SaveConfig()
         {
-            try
-            {
-                List<string> newLines = new List<string>();
-                bool hasColor = false;
-                bool hasDays = false;
-                bool hasOpacity = false;
-
-                if (File.Exists(PLAN_FILE))
-                {
-                    foreach (var line in File.ReadAllLines(PLAN_FILE))
-                    {
-                        if (line.StartsWith("[COLOR]"))
-                        {
-                            newLines.Add($"[COLOR]|{_titleColor}|{_dateColor}|{_contentColor}");
-                            hasColor = true;
-                        }
-                        else if (line.StartsWith("[DAYS]"))
-                        {
-                            newLines.Add($"[DAYS]|{_showDays}");
-                            hasDays = true;
-                        }
-                        else if (line.StartsWith("[OPACITY]"))
-                        {
-                            newLines.Add($"[OPACITY]|{_textOpacity}");
-                            hasOpacity = true;
-                        }
-                        else
-                        {
-                            newLines.Add(line);
-                        }
-                    }
-                }
-
-                if (!hasColor)
-                    newLines.Add($"[COLOR]|{_titleColor}|{_dateColor}|{_contentColor}");
-                if (!hasDays)
-                    newLines.Add($"[DAYS]|{_showDays}");
-                if (!hasOpacity)
-                    newLines.Add($"[OPACITY]|{_textOpacity}");
-
-                File.WriteAllLines(PLAN_FILE, newLines);
-            }
-            catch { }
+            var cfg = DataHelper.GetConfig();
+            cfg.ShowDays = _showDays;
+            cfg.TextOpacity = TextOpacity;
+            cfg.TitleColor = _titleColor;
+            cfg.DateColor = _dateColor;
+            cfg.ContentColor = _contentColor;
+            DataHelper.SaveConfig(cfg);
         }
 
         private void ApplyColor()
@@ -239,21 +152,21 @@ namespace DesktopPlanWidget
                 DateBrush = new SolidColorBrush(Color.FromRgb(255, 204, 0));
                 ContentBrush = Brushes.White;
             }
+            OnPropertyChanged(nameof(TitleBrush));
+            OnPropertyChanged(nameof(DateBrush));
+            OnPropertyChanged(nameof(ContentBrush));
         }
-        #endregion
 
         private void BtnAppearance_Click(object sender, RoutedEventArgs e)
         {
             var win = new AppearanceSettingWindow(_titleColor, _dateColor, _contentColor);
             win.Owner = this;
-            win.ShowDialog();
-
-            if (win.DialogResult == true)
+            if (win.ShowDialog() == true)
             {
                 _titleColor = win.TitleColor;
                 _dateColor = win.DateColor;
                 _contentColor = win.ContentColor;
-                SaveColorToPlanFile();
+                SaveConfig();
                 ApplyColor();
             }
         }
@@ -262,41 +175,28 @@ namespace DesktopPlanWidget
         {
             Window input = new Window
             {
-                Title = "设置显示天数",
+                Title = "显示天数",
                 Width = 220,
-                Height = 130,
+                Height = 160,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 ResizeMode = ResizeMode.NoResize,
                 ShowInTaskbar = false
             };
 
-            var panel = new StackPanel { Margin = new Thickness(15, 10, 15, 15) };
-            var txt = new TextBox
-            {
-                Text = _showDays.ToString(),
-                Height = 28,
-                Margin = new Thickness(0, 0, 0, 15)
-            };
-
-            var ok = new Button
-            {
-                Content = "确定",
-                Width = 80,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-
+            var panel = new StackPanel { Margin = new Thickness(15) };
+            var txt = new TextBox { Text = _showDays.ToString(), Height = 30 };
+            var ok = new Button { Content = "确定", Width = 100, Margin = new Thickness(0, 10, 0, 0) };
             ok.Click += (s, e) =>
             {
                 if (int.TryParse(txt.Text, out int d) && d >= 1 && d <= 30)
                 {
                     _showDays = d;
-                    SaveColorToPlanFile();
+                    SaveConfig();
                     RefreshList();
                     input.Close();
                 }
             };
-
             panel.Children.Add(txt);
             panel.Children.Add(ok);
             input.Content = panel;
@@ -322,7 +222,6 @@ namespace DesktopPlanWidget
                     DisplayDate = GetDisplayDate(p.PlanDate)
                 });
             lstPlan.ItemsSource = result;
-            SetWindowToTopRight();
         }
 
         private string GetDisplayDate(DateTime dt)
@@ -361,93 +260,79 @@ namespace DesktopPlanWidget
             RefreshList();
         }
 
-        #region 开机自启（最终无弹窗版）
-        private bool CheckAutoStartExist()
+        #region 开机自启
+        private bool CheckAutoStartReg()
         {
-            try
-            {
-                using (var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false))
-                {
-                    return key?.GetValue(AutoStartRegName) != null;
-                }
-            }
-            catch
-            {
-                return false;
-            }
+            using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", false);
+            return key?.GetValue(AutoStartRegName) != null;
         }
 
-        private void SetAutoStart(bool isOpen, bool showMessage = false)
+        private void SetAutoStartReg(bool enable)
         {
             try
             {
-                string exePath = Process.GetCurrentProcess().MainModule.FileName;
-
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true))
-                {
-                    if (key == null) return;
-
-                    if (isOpen)
-                    {
-                        key.SetValue(AutoStartRegName, exePath);
-                    }
-                    else
-                    {
-                        if (key.GetValue(AutoStartRegName) != null)
-                            key.DeleteValue(AutoStartRegName);
-                    }
-                }
+                using var key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+                if (key == null) return;
+                string path = Process.GetCurrentProcess().MainModule.FileName;
+                if (enable)
+                    key.SetValue(AutoStartRegName, path);
+                else
+                    key.DeleteValue(AutoStartRegName, false);
             }
             catch { }
         }
 
-        private void chkAutoStart_Checked(object sender, RoutedEventArgs e)
+        private void SyncAutoStart()
         {
-            SetAutoStart(true, false);
-        }
+            var cfg = DataHelper.GetConfig();
+            // 界面勾选同步配置
+            chkAutoStart.IsChecked = cfg.AutoStart;
 
-        private void chkAutoStart_Unchecked(object sender, RoutedEventArgs e)
-        {
-            SetAutoStart(false, false);
+            // 绑定勾选事件：改勾选 立刻写注册表 + 保存配置
+            chkAutoStart.Checked += (s, e) =>
+            {
+                SetAutoStartReg(true);
+                cfg.AutoStart = true;
+                DataHelper.SaveConfig(cfg);
+            };
+            chkAutoStart.Unchecked += (s, e) =>
+            {
+                SetAutoStartReg(false);
+                cfg.AutoStart = false;
+                DataHelper.SaveConfig(cfg);
+            };
+
+            // 初始化：按配置自动写入注册表
+            SetAutoStartReg(cfg.AutoStart);
         }
         #endregion
 
         #region 备份恢复
         private void BackupData()
         {
-            SaveFileDialog d = new SaveFileDialog
-            {
-                Filter = "完整备份|*.bak",
-                FileName = $"backup_{DateTime.Now:yyyyMMdd}"
-            };
-
+            SaveFileDialog d = new SaveFileDialog { Filter = "备份|*.bak", FileName = $"backup_{DateTime.Now:yyyyMMdd}" };
             if (d.ShowDialog() == true)
             {
-                SaveColorToPlanFile();
+                SaveConfig();
                 DataHelper.BackupAll(d.FileName);
-                MessageBox.Show("备份成功！", "提示");
+                MessageBox.Show("备份成功", "提示");
             }
         }
 
+        // 备份恢复（修改后：恢复后立即刷新界面，立即生效）
         private void RestoreData()
         {
-            OpenFileDialog d = new OpenFileDialog { Filter = "备份文件|*.bak" };
+            OpenFileDialog d = new OpenFileDialog { Filter = "备份|*.bak" };
             if (d.ShowDialog() == true)
             {
-                try
-                {
-                    DataHelper.RestoreAll(d.FileName);
-                    LoadColorToPlanFile();
-                    ApplyColor();
-                    sliderOpacity.Value = _textOpacity;
-                    lstPlan.ItemsSource = null;
-                    RefreshList();
-                    MessageBox.Show("恢复成功！", "成功");
-                }
-                catch
-                {
-                    MessageBox.Show("恢复失败");
-                }
+                DataHelper.RestoreAll(d.FileName);
+                LoadConfig();
+                ApplyColor();
+                DataHelper.GenerateNextRepeatPlans();
+                RefreshList();
+                // 恢复备份后同步开机自启勾选和注册表
+                SyncAutoStart();
+                MessageBox.Show("恢复成功，数据已立即生效！", "成功");
             }
         }
         #endregion

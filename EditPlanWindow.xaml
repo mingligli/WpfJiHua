@@ -1,21 +1,13 @@
 ﻿<Window x:Class="DesktopPlanWidget.EditPlanWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="计划管理[作者:青岩，微信：qingyan_lml]" Width="800" Height="500" WindowStartupLocation="CenterScreen">
+        Title="计划管理" Width="800" Height="500" WindowStartupLocation="CenterScreen">
     <Grid Margin="10">
         <StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0 0 10 0" Height="52">
-
-                <!-- 日期选择 -->
                 <DatePicker x:Name="dp" Width="130" Height="52" VerticalContentAlignment="Center" />
-
-                <!-- 时间选择（兼容版，不报错） -->
-                <ComboBox x:Name="cbTime" Width="90" Height="52" Margin="5 0 0 0" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
-
-                <!-- 内容 -->
+                <ComboBox x:Name="cbTime" Width="90" Height="52" Margin="5 0 0 0" VerticalContentAlignment="Center" />
                 <TextBox x:Name="txt" Width="260" Height="52" Margin="5 0 0 0" VerticalContentAlignment="Center" />
-
-                <!-- 重复类型 -->
                 <ComboBox x:Name="cbo" Width="110" Height="52" Margin="5 0 0 0" SelectedIndex="0" VerticalContentAlignment="Center">
                     <ComboBoxItem Content="不重复"/>
                     <ComboBoxItem Content="按天重复"/>
@@ -24,13 +16,9 @@
                     <ComboBoxItem Content="按年重复"/>
                     <ComboBoxItem Content="按年(农历)"/>
                 </ComboBox>
-
-                <!-- 间隔 -->
-                <TextBox x:Name="interval" Width="60" Height="52" Margin="5 0 0 0" Text="1" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
-
-                <!-- 添加 -->
+                <TextBox x:Name="interval" Width="60" Height="52" Margin="5 0 0 0" Text="1" VerticalContentAlignment="Center" />
                 <Button x:Name="btnAdd" Content="添加计划" Width="80" Height="52" Margin="5 0 0 0" Click="Add"/>
-
+                <Button x:Name="btnUpdate" Content="保存修改" Width="80" Height="52" Margin="5 0 0 0" Click="Update" Background="#0063b1" Foreground="White"/>
             </StackPanel>
 
             <ListBox x:Name="list" Height="400" Margin="0 5 0 0">
@@ -39,12 +27,17 @@
                         <Grid Margin="0 2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="420"/>
+                                <ColumnDefinition Width="320"/>
                                 <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="80"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding PlanDate,StringFormat=yyyy-MM-dd HH:mm}" Grid.Column="0" Foreground="#333"/>
-                            <TextBlock Text="{Binding Content}" Grid.Column="1" Foreground="#222"/>
-                            <Button Content="删除" Grid.Column="2" Background="#c83c3c" Foreground="White" Click="Del" Tag="{Binding}"/>
+                            <TextBlock Text="{Binding PlanDate,StringFormat=yyyy-MM-dd HH:mm}" Grid.Column="0"/>
+                            <TextBlock Text="{Binding Content}" Grid.Column="1"/>
+                            <TextBlock Grid.Column="2" Text="{Binding RepeatInfo}" HorizontalAlignment="Center"/>
+                            <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                <Button Content="修改" Width="38" Background="#369" Foreground="White" Click="LoadToEdit" Tag="{Binding}"/>
+                                <Button Content="删除" Width="38" Margin="2 0 0 0" Background="#c83c3c" Foreground="White" Click="Del" Tag="{Binding}"/>
+                            </StackPanel>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

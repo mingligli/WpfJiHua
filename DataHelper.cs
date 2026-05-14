@@ -41,14 +41,17 @@ namespace DesktopPlanWidget
             try
             {
                 if (!File.Exists(ConfigFile))
-                    return new AppConfig();
+                {
+                    // 首次运行：默认开机自启开启
+                    return new AppConfig { AutoStart = true };
+                }
 
                 var json = File.ReadAllText(ConfigFile);
-                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig { AutoStart = true };
             }
             catch
             {
-                return new AppConfig();
+                return new AppConfig { AutoStart = true };
             }
         }
 
@@ -65,10 +68,10 @@ namespace DesktopPlanWidget
         public static List<PlanTask> GetCustomDaysPlans(int days)
         {
             var today = DateTime.Now.Date;
-            return GetAllPlans().FindAll(p => p.PlanDate.Date >= today && p.PlanDate.Date <= today.AddDays(days));
+            var end = today.AddDays(days);
+            return GetAllPlans().FindAll(p => p.PlanDate >= today && p.PlanDate <= end);
         }
 
-        // 🔥 最简单、最稳定的备份恢复（不会再出错！）
         public static bool BackupAll(string savePath)
         {
             try
@@ -109,6 +112,54 @@ namespace DesktopPlanWidget
                 return false;
             }
         }
+
+        public static void GenerateNextRepeatPlans()
+        {
+            var all = GetAllPlans();
+            bool changed = false;
+            var now = DateTime.Now;
+
+            for (int i = all.Count - 1; i >= 0; i--)
+            {
+                var p = all[i];
+                if (p.RepeatType == RepeatType.None) continue;
+                if (p.PlanDate > now) continue;
+
+                DateTime next = p.PlanDate;
+                switch (p.RepeatType)
+                {
+                    case RepeatType.Day:
+                        next = next.AddDays(p.Interval);
+                        break;
+                    case RepeatType.Week:
+                        next = next.AddDays(p.Interval * 7);
+                        break;
+                    case RepeatType.Month:
+                        next = next.AddMonths(p.Interval);
+                        break;
+                    case RepeatType.Year:
+                        next = next.AddYears(p.Interval);
+                        break;
+                    case RepeatType.YearLunar:
+                        next = next.AddYears(p.Interval);
+                        break;
+                }
+
+                if (next <= now) next = now.AddMinutes(1);
+                all.Add(new PlanTask
+                {
+                    PlanDate = next,
+                    Content = p.Content,
+                    RepeatType = p.RepeatType,
+                    Interval = p.Interval,
+                    IsAutoRepeat = true
+                });
+                all.RemoveAt(i);
+                changed = true;
+            }
+
+            if (changed) SavePlans(all);
+        }
     }
 
     public class BackupPackage
@@ -124,6 +175,8 @@ namespace DesktopPlanWidget
         public string TitleColor { get; set; } = "#FFFFFF";
         public string DateColor { get; set; } = "#FFCC00";
         public string ContentColor { get; set; } = "#FFFFFF";
+        // 新增：开机自启配置
+        public bool AutoStart { get; set; } = true;
     }
 
     public enum RepeatType { None, Day, Week, Month, Year, YearLunar }
