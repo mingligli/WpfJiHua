@@ -34,7 +34,6 @@
 
                             <TextBlock Text="{Binding PlanDate,StringFormat=yyyy-MM-dd HH:mm}" Grid.Column="0" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding Content}" Grid.Column="1" VerticalAlignment="Center"/>
-
                             <TextBlock Text="{Binding RepeatDesc}" Grid.Column="2" VerticalAlignment="Center" Foreground="LightBlue"/>
 
                             <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center">
