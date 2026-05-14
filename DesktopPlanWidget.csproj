@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Condition=" '$(EAZFUSCATOR_NET_HOME)' != '' and Exists('$(EAZFUSCATOR_NET_HOME)/Integration/MSBuild/Eazfuscator.NET.props') " Project="$(EAZFUSCATOR_NET_HOME)/Integration/MSBuild/Eazfuscator.NET.props" />
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<Nullable>disable</Nullable>
+	</PropertyGroup>
+	<PropertyGroup>
+		<!-- Eazfuscator.NET is integrated with this project at MSBuild level: https://help.gapotchenko.com/eazfuscator.net/kb/100036 -->
+		<EazfuscatorIntegration>MSBuild</EazfuscatorIntegration>
+		<EazfuscatorActiveConfiguration>Release</EazfuscatorActiveConfiguration>
+		<EazfuscatorCompatibilityVersion>2026.1</EazfuscatorCompatibilityVersion>
+		<ApplicationIcon>rili.ico</ApplicationIcon>
+		<Copyright>青岩软件工作室</Copyright>
+		<PackageIcon>Rili.png</PackageIcon>
+		<Description>桌面右上角显示一个自定义计划提示，第次启动或第二天8点更新一次重复数据，并删除过期数据。</Description>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<DebugType>none</DebugType>
+	</PropertyGroup>
+	<Import Condition=" '$(EAZFUSCATOR_NET_HOME)' != '' and Exists('$(EAZFUSCATOR_NET_HOME)/Integration/MSBuild/Eazfuscator.NET.targets') " Project="$(EAZFUSCATOR_NET_HOME)/Integration/MSBuild/Eazfuscator.NET.targets" />
+	<ItemGroup>
+	  <Content Include="rili.ico" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Update="Rili.png">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
+</Project>

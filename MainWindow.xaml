@@ -1,0 +1,69 @@
+﻿<Window x:Class="DesktopPlanWidget.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="桌面计划" Width="330"
+        WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        SizeToContent="Height"
+        MinHeight="180"
+        WindowStartupLocation="Manual">
+
+    <Grid Margin="2">
+        <StackPanel>
+            <Grid Height="30" Background="Transparent">
+                <TextBlock Text="📅 我的计划[开发：青岩]" 
+                           Foreground="{Binding TitleBrush}"
+                           FontSize="12"
+                           Margin="8,0" VerticalAlignment="Center"/>
+
+                <TextBlock Text="按住CTRL操作" 
+                           Foreground="#CCCCCC"
+                           FontSize="10"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" 
+                           Margin="0,0,35,0"/>
+
+                <Button x:Name="btnSettings" Content="⚙" 
+                        Foreground="White" 
+                        HorizontalAlignment="Right" Margin="5,0" 
+                        Background="Transparent" BorderThickness="0"/>
+            </Grid>
+
+            <ListBox x:Name="lstPlan" Background="Transparent" Margin="5" BorderThickness="0" HorizontalContentAlignment="Stretch">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,2">
+                            <TextBlock Text="{Binding DisplayDate}" 
+                                       Foreground="{Binding DateBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       FontSize="12"/>
+
+                            <CheckBox IsChecked="{Binding IsFinish}" 
+                                      FontSize="13"
+                                      Foreground="{Binding ContentBrush, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Margin="0,1,0,4">
+                                <CheckBox.Content>
+                                    <TextBlock TextWrapping="Wrap" Width="280" Text="{Binding Content}"/>
+                                </CheckBox.Content>
+                            </CheckBox>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Popup x:Name="settingPopup" Placement="Bottom" PlacementTarget="{Binding ElementName=btnSettings}" StaysOpen="False">
+                <Border Background="#333333" Width="160" Padding="3">
+                    <StackPanel>
+                        <Button x:Name="BtnOpenManage" Content="计划管理" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnSetDays" Content="设置天数" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnAppearance" Content="外观设置" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnBackupData" Content="备份数据" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnRestoreData" Content="恢复备份" Foreground="White" Background="#555" Margin="1"/>
+                        <CheckBox x:Name="chkAutoStart" Content="开机启动" Foreground="White" Margin="5,2"/>
+                        <Button x:Name="BtnExit" Content="退出" Foreground="White" Background="#993333" Margin="1"/>
+                    </StackPanel>
+                </Border>
+            </Popup>
+        </StackPanel>
+    </Grid>
+</Window>
