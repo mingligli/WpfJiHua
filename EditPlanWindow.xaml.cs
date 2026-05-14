@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 
 namespace DesktopPlanWidget
 {
     public partial class EditPlanWindow : Window
     {
-        private List<PlanTask> _plans = new List<PlanTask>();
-        private PlanTask _currentModifyPlan = null; // 正在修改的计划
+        private List<PlanTask> _plans;
+        private PlanTask _currentModifyPlan;
 
         public EditPlanWindow()
         {
@@ -19,102 +20,128 @@ namespace DesktopPlanWidget
                     cbTime.Items.Add($"{h:D2}:{m:D2}");
 
             cbTime.SelectedIndex = 18;
-            LoadData();
-            UpdateButtonState(); // 初始化按钮状态
+            RefreshList();
+            UpdateButtonState();
         }
 
-        private void LoadData()
+        private void RefreshList()
         {
             _plans = DataHelper.GetAllPlans();
-            list.ItemsSource = _plans;
+
+            // 给每一条数据加上 RepeatDesc 文字
+            var displayList = _plans.Select(p => new
+            {
+                p.PlanDate,
+                p.Content,
+                RepeatDesc = GetRepeatText(p), // 一定显示
+                p.RepeatType,
+                p.Interval
+            }).ToList();
+
+            list.ItemsSource = displayList;
         }
 
-        // 清空编辑区
+        private string GetRepeatText(PlanTask p)
+        {
+            return p.RepeatType switch
+            {
+                RepeatType.None => "一次性",
+                RepeatType.Day => $"每{p.Interval}天",
+                RepeatType.Week => $"每{p.Interval}周",
+                RepeatType.Month => $"每{p.Interval}月",
+                RepeatType.Year => $"每{p.Interval}年",
+                RepeatType.YearLunar => $"每{p.Interval}年(农历)",
+                _ => "未知"
+            };
+        }
+
         private void ClearEdit()
         {
             txt.Clear();
             interval.Text = "1";
             cbo.SelectedIndex = 0;
             _currentModifyPlan = null;
-            UpdateButtonState(); // 改回添加状态
+            UpdateButtonState();
         }
 
-        // 切换按钮状态：添加 / 修改
         private void UpdateButtonState()
         {
             btnAdd.Visibility = _currentModifyPlan == null ? Visibility.Visible : Visibility.Collapsed;
             btnUpdate.Visibility = _currentModifyPlan != null ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // 添加计划
         private void Add(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txt.Text)) { MessageBox.Show("请输入内容"); return; }
-            if (!dp.SelectedDate.HasValue) { MessageBox.Show("请选择日期"); return; }
-            if (cbTime.SelectedItem == null) { MessageBox.Show("请选择时间"); return; }
-            if (!int.TryParse(interval.Text, out int i) || i < 1) { MessageBox.Show("间隔必须≥1"); return; }
+            if (!int.TryParse(interval.Text, out int i) || i < 1)
+            { MessageBox.Show("间隔必须≥1"); return; }
 
-            DateTime planDate = dp.SelectedDate.Value.Date + TimeSpan.Parse(cbTime.SelectedItem.ToString());
             _plans.Add(new PlanTask
             {
-                PlanDate = planDate,
+                PlanDate = dp.SelectedDate.Value.Date + TimeSpan.Parse(cbTime.SelectedItem.ToString()),
                 Content = txt.Text.Trim(),
                 RepeatType = (RepeatType)cbo.SelectedIndex,
-                Interval = i,
-                IsAutoRepeat = false
+                Interval = i
             });
 
             DataHelper.SavePlans(_plans);
             ClearEdit();
-            LoadData();
+            RefreshList();
         }
 
-        // 加载到编辑区（修改）
         private void LoadToEdit(object sender, RoutedEventArgs e)
         {
             var btn = sender as FrameworkElement;
-            if (btn == null || !(btn.Tag is PlanTask plan)) return;
+            var item = btn?.DataContext;
+            if (item == null) return;
 
-            _currentModifyPlan = plan;
+            DateTime planDate = (DateTime)item.GetType().GetProperty("PlanDate").GetValue(item);
+            string content = (string)item.GetType().GetProperty("Content").GetValue(item);
+            RepeatType type = (RepeatType)item.GetType().GetProperty("RepeatType").GetValue(item);
+            int interval = (int)item.GetType().GetProperty("Interval").GetValue(item);
 
-            dp.SelectedDate = plan.PlanDate.Date;
-            cbTime.Text = plan.PlanDate.ToString("HH:mm");
-            txt.Text = plan.Content;
-            cbo.SelectedIndex = (int)plan.RepeatType;
-            interval.Text = plan.Interval.ToString();
+            _currentModifyPlan = _plans.FirstOrDefault(p =>
+                p.PlanDate == planDate &&
+                p.Content == content &&
+                p.RepeatType == type &&
+                p.Interval == interval);
 
-            UpdateButtonState(); // 切换到修改状态
+            if (_currentModifyPlan == null) return;
+
+            dp.SelectedDate = _currentModifyPlan.PlanDate.Date;
+            cbTime.Text = _currentModifyPlan.PlanDate.ToString("HH:mm");
+            txt.Text = _currentModifyPlan.Content;
+            cbo.SelectedIndex = (int)_currentModifyPlan.RepeatType;
+            this.interval.Text = _currentModifyPlan.Interval.ToString();
+            UpdateButtonState();
         }
 
-        // 保存修改（不新增，只更新）
         private void Update(object sender, RoutedEventArgs e)
         {
-            if (_currentModifyPlan == null) { MessageBox.Show("请先选择计划"); return; }
-            if (string.IsNullOrWhiteSpace(txt.Text)) { MessageBox.Show("内容不能为空"); return; }
-            if (!dp.SelectedDate.HasValue || cbTime.SelectedItem == null) { MessageBox.Show("日期时间不能为空"); return; }
-            if (!int.TryParse(interval.Text, out int i) || i < 1) { MessageBox.Show("间隔≥1"); return; }
+            if (_currentModifyPlan == null) { MessageBox.Show("请选择计划"); return; }
 
             _currentModifyPlan.PlanDate = dp.SelectedDate.Value.Date + TimeSpan.Parse(cbTime.SelectedItem.ToString());
             _currentModifyPlan.Content = txt.Text.Trim();
             _currentModifyPlan.RepeatType = (RepeatType)cbo.SelectedIndex;
-            _currentModifyPlan.Interval = i;
+            _currentModifyPlan.Interval = int.Parse(interval.Text);
 
             DataHelper.SavePlans(_plans);
             ClearEdit();
-            LoadData();
+            RefreshList();
             MessageBox.Show("修改成功！");
         }
 
-        // 删除
         private void Del(object sender, RoutedEventArgs e)
         {
             var btn = sender as FrameworkElement;
-            if (btn == null || !(btn.Tag is PlanTask plan)) return;
+            var item = btn?.DataContext;
+            if (item == null) return;
 
-            _plans.Remove(plan);
+            DateTime planDate = (DateTime)item.GetType().GetProperty("PlanDate").GetValue(item);
+            string content = (string)item.GetType().GetProperty("Content").GetValue(item);
+
+            _plans.RemoveAll(p => p.PlanDate == planDate && p.Content == content);
             DataHelper.SavePlans(_plans);
-            ClearEdit();
-            LoadData();
+            RefreshList();
         }
     }
 }

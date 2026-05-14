@@ -27,16 +27,19 @@
                         <Grid Margin="0 2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="150"/>
-                                <ColumnDefinition Width="320"/>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="280"/>
+                                <ColumnDefinition Width="140"/>
                                 <ColumnDefinition Width="80"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding PlanDate,StringFormat=yyyy-MM-dd HH:mm}" Grid.Column="0"/>
-                            <TextBlock Text="{Binding Content}" Grid.Column="1"/>
-                            <TextBlock Grid.Column="2" Text="{Binding RepeatInfo}" HorizontalAlignment="Center"/>
-                            <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                <Button Content="修改" Width="38" Background="#369" Foreground="White" Click="LoadToEdit" Tag="{Binding}"/>
-                                <Button Content="删除" Width="38" Margin="2 0 0 0" Background="#c83c3c" Foreground="White" Click="Del" Tag="{Binding}"/>
+
+                            <TextBlock Text="{Binding PlanDate,StringFormat=yyyy-MM-dd HH:mm}" Grid.Column="0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Content}" Grid.Column="1" VerticalAlignment="Center"/>
+
+                            <TextBlock Text="{Binding RepeatDesc}" Grid.Column="2" VerticalAlignment="Center" Foreground="LightBlue"/>
+
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Content="修改" Width="38" Background="#369" Foreground="White" Click="LoadToEdit"/>
+                                <Button Content="删除" Width="38" Margin="2 0 0 0" Background="#c83c3c" Foreground="White" Click="Del"/>
                             </StackPanel>
                         </Grid>
                     </DataTemplate>
