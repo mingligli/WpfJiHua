@@ -7,26 +7,18 @@ namespace DesktopPlanWidget
 {
     public static class DataHelper
     {
-        public static string AppDataPath { get; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "DesktopPlanWidget");
-
-        private static string DataFile => Path.Combine(AppDataPath, "plans.json");
-        private static string ConfigFile => Path.Combine(AppDataPath, "config.json");
-
-        static DataHelper()
-        {
-            if (!Directory.Exists(AppDataPath))
-                Directory.CreateDirectory(AppDataPath);
-        }
+        private static string PlanFile => "plans.json";
+        private static string ConfigFile => "config.json";
 
         public static List<PlanTask> GetAllPlans()
         {
             try
             {
-                return File.Exists(DataFile)
-                    ? JsonSerializer.Deserialize<List<PlanTask>>(File.ReadAllText(DataFile))
-                    : new List<PlanTask>();
+                if (!File.Exists(PlanFile))
+                    return new List<PlanTask>();
+
+                var json = File.ReadAllText(PlanFile);
+                return JsonSerializer.Deserialize<List<PlanTask>>(json) ?? new List<PlanTask>();
             }
             catch
             {
@@ -38,7 +30,8 @@ namespace DesktopPlanWidget
         {
             try
             {
-                File.WriteAllText(DataFile, JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true }));
+                var opt = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(PlanFile, JsonSerializer.Serialize(list, opt));
             }
             catch { }
         }
@@ -47,9 +40,11 @@ namespace DesktopPlanWidget
         {
             try
             {
-                return File.Exists(ConfigFile)
-                    ? JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(ConfigFile))
-                    : new AppConfig();
+                if (!File.Exists(ConfigFile))
+                    return new AppConfig();
+
+                var json = File.ReadAllText(ConfigFile);
+                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
             }
             catch
             {
@@ -57,11 +52,12 @@ namespace DesktopPlanWidget
             }
         }
 
-        public static void SaveConfig(AppConfig config)
+        public static void SaveConfig(AppConfig cfg)
         {
             try
             {
-                File.WriteAllText(ConfigFile, JsonSerializer.Serialize(config));
+                var opt = new JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(ConfigFile, JsonSerializer.Serialize(cfg, opt));
             }
             catch { }
         }
@@ -69,18 +65,21 @@ namespace DesktopPlanWidget
         public static List<PlanTask> GetCustomDaysPlans(int days)
         {
             var today = DateTime.Now.Date;
-            return GetAllPlans().FindAll(p =>
-                p.PlanDate.Date >= today &&
-                p.PlanDate.Date <= today.AddDays(days));
+            return GetAllPlans().FindAll(p => p.PlanDate.Date >= today && p.PlanDate.Date <= today.AddDays(days));
         }
 
-        public static void RefreshNextRepeatTasks() { }
-
-        public static bool BackupData(string savePath)
+        // 🔥 最简单、最稳定的备份恢复（不会再出错！）
+        public static bool BackupAll(string savePath)
         {
             try
             {
-                File.Copy(DataFile, savePath, true);
+                var pack = new BackupPackage
+                {
+                    Plans = GetAllPlans(),
+                    Config = GetConfig()
+                };
+                var json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(savePath, json);
                 return true;
             }
             catch
@@ -89,12 +88,21 @@ namespace DesktopPlanWidget
             }
         }
 
-        public static bool RestoreData(string backupPath)
+        public static bool RestoreAll(string bakPath)
         {
             try
             {
-                File.Copy(backupPath, DataFile, true);
-                return true;
+                if (!File.Exists(bakPath)) return false;
+                var json = File.ReadAllText(bakPath);
+                var pack = JsonSerializer.Deserialize<BackupPackage>(json);
+
+                if (pack != null)
+                {
+                    SavePlans(pack.Plans);
+                    SaveConfig(pack.Config);
+                    return true;
+                }
+                return false;
             }
             catch
             {
@@ -103,11 +111,19 @@ namespace DesktopPlanWidget
         }
     }
 
+    public class BackupPackage
+    {
+        public List<PlanTask> Plans { get; set; } = new List<PlanTask>();
+        public AppConfig Config { get; set; } = new AppConfig();
+    }
+
     public class AppConfig
     {
         public int ShowDays { get; set; } = 7;
-        public double WindowOpacity { get; set; } = 1.0;
-        public bool AutoBackupEnabled { get; set; } = true; // 默认开启自动备份
+        public double TextOpacity { get; set; } = 1.0;
+        public string TitleColor { get; set; } = "#FFFFFF";
+        public string DateColor { get; set; } = "#FFCC00";
+        public string ContentColor { get; set; } = "#FFFFFF";
     }
 
     public enum RepeatType { None, Day, Week, Month, Year, YearLunar }

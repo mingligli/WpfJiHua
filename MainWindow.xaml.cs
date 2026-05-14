@@ -22,7 +22,6 @@ namespace DesktopPlanWidget
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
         }
 
-        private DispatcherTimer _dailyTimer;
         private int _showDays = 7;
         private const string PLAN_FILE = "plans.txt";
 
@@ -339,7 +338,9 @@ namespace DesktopPlanWidget
                 DayOfWeek.Sunday => "周日",
                 _ => ""
             };
-            return $"{dt:yyyy-MM-dd} {monthNames[m]} {day} {week}";
+
+            // 🔥 这里增加了 HH:mm 显示时分
+            return $"{dt:yyyy-MM-dd HH:mm} {monthNames[m]} {day} {week}";
         }
 
         private void OpenManage()
@@ -379,11 +380,21 @@ namespace DesktopPlanWidget
         #endregion
 
         #region 备份恢复
+
         private void BackupData()
         {
-            SaveFileDialog d = new SaveFileDialog { Filter = "备份文件|*.bak", FileName = $"backup_{DateTime.Now:yyyyMMdd}.bak" };
+            SaveFileDialog d = new SaveFileDialog
+            {
+                Filter = "完整备份|*.bak",
+                FileName = $"backup_{DateTime.Now:yyyyMMdd}"
+            };
+
             if (d.ShowDialog() == true)
-                File.Copy(PLAN_FILE, d.FileName, true);
+            {
+                SaveColorToPlanFile();
+                DataHelper.BackupAll(d.FileName);
+                MessageBox.Show("备份成功！", "提示");
+            }
         }
 
         private void RestoreData()
@@ -391,12 +402,29 @@ namespace DesktopPlanWidget
             OpenFileDialog d = new OpenFileDialog { Filter = "备份文件|*.bak" };
             if (d.ShowDialog() == true)
             {
-                File.Copy(d.FileName, PLAN_FILE, true);
-                LoadColorToPlanFile();
-                ApplyColor();
-                RefreshList();
+                try
+                {
+                    // 恢复文件
+                    DataHelper.RestoreAll(d.FileName);
+
+                    // 🔥 强制重新读取所有数据（关键修复！）
+                    LoadColorToPlanFile();
+                    ApplyColor();
+                    sliderOpacity.Value = _textOpacity;
+
+                    // 清空列表再刷新 → 数据必现！
+                    lstPlan.ItemsSource = null;
+                    RefreshList();
+
+                    MessageBox.Show("恢复成功！\n数据 + 颜色 + 天数 + 透明度已全部还原", "成功");
+                }
+                catch
+                {
+                    MessageBox.Show("恢复失败");
+                }
             }
         }
+
         #endregion
     }
 

@@ -13,7 +13,7 @@
     <Grid Margin="2">
         <StackPanel>
             <Grid Height="30" Background="Transparent">
-                <TextBlock Text="📅 我的计划[开发：青岩]" 
+                <TextBlock Text="📅 日程[BY:青岩]" 
                            Foreground="{Binding TitleBrush}"
                            FontSize="12"
                            Margin="8,0" VerticalAlignment="Center"/>

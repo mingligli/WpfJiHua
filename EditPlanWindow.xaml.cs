@@ -12,6 +12,16 @@ namespace DesktopPlanWidget
         {
             InitializeComponent();
             dp.SelectedDate = DateTime.Now;
+
+            // 自动加载时间点 00:00 ~ 23:30
+            for (int h = 0; h < 24; h++)
+            {
+                for (int m = 0; m < 60; m += 30)
+                {
+                    cbTime.Items.Add($"{h:D2}:{m:D2}");
+                }
+            }
+            cbTime.SelectedIndex = 18; // 默认 09:00
             LoadData();
         }
 
@@ -21,9 +31,6 @@ namespace DesktopPlanWidget
             list.ItemsSource = _plans;
         }
 
-        // ==============================
-        // 🔥 添加：只加当前，不生成下一次
-        // ==============================
         private void Add(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txt.Text))
@@ -38,16 +45,26 @@ namespace DesktopPlanWidget
                 return;
             }
 
+            if (cbTime.SelectedItem == null)
+            {
+                MessageBox.Show("请选择时间！", "提示");
+                return;
+            }
+
             if (!int.TryParse(interval.Text, out int i) || i < 1)
             {
                 MessageBox.Show("间隔必须≥1", "提示");
                 return;
             }
 
-            // 只添加原始任务
+            // 合并日期 + 选择的时间
+            DateTime date = dp.SelectedDate.Value;
+            string timeStr = cbTime.SelectedItem.ToString();
+            DateTime planDate = date.Date + TimeSpan.Parse(timeStr);
+
             _plans.Add(new PlanTask
             {
-                PlanDate = dp.SelectedDate.Value,
+                PlanDate = planDate,
                 Content = txt.Text.Trim(),
                 RepeatType = (RepeatType)cbo.SelectedIndex,
                 Interval = i,
@@ -57,8 +74,6 @@ namespace DesktopPlanWidget
             DataHelper.SavePlans(_plans);
             LoadData();
             txt.Clear();
-
-            MessageBox.Show("添加成功！\r\n下次计划将在 启动/次日8点 自动生成", "提示");
         }
 
         private void Del(object sender, RoutedEventArgs e)
@@ -66,9 +81,9 @@ namespace DesktopPlanWidget
             if ((sender as FrameworkElement)?.Tag is PlanTask t)
             {
                 _plans.RemoveAll(x =>
-                    x.Content == t.Content
-                    && x.RepeatType == t.RepeatType
-                    && x.Interval == t.Interval
+                    x.Content == t.Content &&
+                    x.RepeatType == t.RepeatType &&
+                    x.Interval == t.Interval
                 );
                 DataHelper.SavePlans(_plans);
                 LoadData();
