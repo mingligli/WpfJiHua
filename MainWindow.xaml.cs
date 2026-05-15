@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -211,7 +212,7 @@ namespace DesktopPlanWidget
 
         private void RefreshList()
         {
-            var list = DataHelper.GetCustomDaysPlans(_showDays);
+            var list = DataHelper.GetCustomDaysPlans(_showDays).OrderBy(p => p.PlanDate).ToList();
             var result = new List<PlanItem>();
             foreach (var p in list)
                 result.Add(new PlanItem
