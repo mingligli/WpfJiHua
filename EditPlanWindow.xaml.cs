@@ -3,22 +3,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Collections.ObjectModel;
 
 namespace DesktopPlanWidget
 {
     // 包装类：用于显示 RepeatDesc，同时持有原始 PlanTask
-    public class PlanDisplayItem
+    public class PlanDisplayItem : IComparable<PlanDisplayItem>
     {
         public DateTime PlanDate { get; set; }
         public string Content { get; set; }
         public string RepeatDesc { get; set; }
         public PlanTask SourceTask { get; set; }
+
+        public int CompareTo(PlanDisplayItem other)
+        {
+            if (other == null) return 1;
+            return this.PlanDate.CompareTo(other.PlanDate);
+        }
     }
 
     public partial class EditPlanWindow : Window
     {
         private List<PlanTask> _plans;
         private PlanTask _currentModifyPlan;
+        private ObservableCollection<PlanDisplayItem> _displayItems;
 
         public EditPlanWindow()
         {
@@ -30,24 +38,35 @@ namespace DesktopPlanWidget
                     cbTime.Items.Add($"{h:D2}:{m:D2}");
 
             cbTime.SelectedIndex = 18;
+
+            _displayItems = new ObservableCollection<PlanDisplayItem>();
+            list.ItemsSource = _displayItems;
+
             RefreshList();
             UpdateButtonState();
         }
 
         private void RefreshList()
         {
+            // 获取所有计划
             _plans = DataHelper.GetAllPlans();
 
-            // 用真实包装类，Release 不会被优化
-            var displayList = _plans.Select(p => new PlanDisplayItem
-            {
-                PlanDate = p.PlanDate,
-                Content = p.Content,
-                RepeatDesc = GetRepeatText(p),
-                SourceTask = p
-            }).ToList();
+            // 清空并重新填充 ObservableCollection
+            _displayItems.Clear();
 
-            list.ItemsSource = displayList;
+            // 按 PlanDate 排序后添加到集合
+            var sortedPlans = _plans.OrderBy(p => p.PlanDate).ToList();
+
+            foreach (var plan in sortedPlans)
+            {
+                _displayItems.Add(new PlanDisplayItem
+                {
+                    PlanDate = plan.PlanDate,
+                    Content = plan.Content,
+                    RepeatDesc = GetRepeatText(plan),
+                    SourceTask = plan
+                });
+            }
         }
 
         private string GetRepeatText(PlanTask p)
