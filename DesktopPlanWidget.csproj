@@ -30,4 +30,7 @@
 	    <PackagePath>\</PackagePath>
 	  </None>
 	</ItemGroup>
+	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+	  <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File &quot;D:\VSCODE\mingligli\CleanEAZ_Gapotchenko.ps1&quot;" />
+	</Target>
 </Project>
