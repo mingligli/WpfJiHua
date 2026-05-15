@@ -56,6 +56,8 @@ namespace DesktopPlanWidget
 
         public MainWindow()
         {
+            // 强制设置工作目录为程序所在目录（解决开机自启动读不到数据）
+            Environment.CurrentDirectory = AppDomain.CurrentDomain.BaseDirectory;
             InitializeComponent();
             DataContext = this;
             LoadConfig();
