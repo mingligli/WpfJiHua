@@ -6,6 +6,15 @@ using System.Windows.Controls;
 
 namespace DesktopPlanWidget
 {
+    // 包装类：用于显示 RepeatDesc，同时持有原始 PlanTask
+    public class PlanDisplayItem
+    {
+        public DateTime PlanDate { get; set; }
+        public string Content { get; set; }
+        public string RepeatDesc { get; set; }
+        public PlanTask SourceTask { get; set; }
+    }
+
     public partial class EditPlanWindow : Window
     {
         private List<PlanTask> _plans;
@@ -16,7 +25,6 @@ namespace DesktopPlanWidget
             InitializeComponent();
             dp.SelectedDate = DateTime.Now;
 
-            // 初始化时间下拉框
             for (int h = 0; h < 24; h++)
                 for (int m = 0; m < 60; m += 30)
                     cbTime.Items.Add($"{h:D2}:{m:D2}");
@@ -26,15 +34,36 @@ namespace DesktopPlanWidget
             UpdateButtonState();
         }
 
-        // 刷新列表 - 直接绑定 PlanTask 对象
         private void RefreshList()
         {
             _plans = DataHelper.GetAllPlans();
-            list.ItemsSource = null;  // 先清空
-            list.ItemsSource = _plans;  // 直接绑定原始对象
+
+            // 用真实包装类，Release 不会被优化
+            var displayList = _plans.Select(p => new PlanDisplayItem
+            {
+                PlanDate = p.PlanDate,
+                Content = p.Content,
+                RepeatDesc = GetRepeatText(p),
+                SourceTask = p
+            }).ToList();
+
+            list.ItemsSource = displayList;
         }
 
-        // 清空编辑框
+        private string GetRepeatText(PlanTask p)
+        {
+            return p.RepeatType switch
+            {
+                RepeatType.None => "一次性",
+                RepeatType.Day => $"每{p.Interval}天",
+                RepeatType.Week => $"每{p.Interval}周",
+                RepeatType.Month => $"每{p.Interval}月",
+                RepeatType.Year => $"每{p.Interval}年",
+                RepeatType.YearLunar => $"每{p.Interval}年(农历)",
+                _ => "未知"
+            };
+        }
+
         private void ClearEdit()
         {
             txt.Clear();
@@ -46,14 +75,12 @@ namespace DesktopPlanWidget
             UpdateButtonState();
         }
 
-        // 更新按钮状态
         private void UpdateButtonState()
         {
             btnAdd.Visibility = _currentModifyPlan == null ? Visibility.Visible : Visibility.Collapsed;
             btnUpdate.Visibility = _currentModifyPlan != null ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // 添加计划
         private void Add(object sender, RoutedEventArgs e)
         {
             try
@@ -97,22 +124,19 @@ namespace DesktopPlanWidget
             }
         }
 
-        // 加载计划到编辑框（修改按钮点击事件）
         private void LoadToEdit(object sender, RoutedEventArgs e)
         {
             try
             {
-                // 获取按钮所在的DataContext（即 PlanTask 对象）
                 Button btn = sender as Button;
                 if (btn == null) return;
 
-                PlanTask selectedPlan = btn.DataContext as PlanTask;
-                if (selectedPlan == null) return;
+                // 直接转成包装类，不用反射
+                PlanDisplayItem item = btn.DataContext as PlanDisplayItem;
+                if (item == null) return;
 
-                // 保存当前要修改的计划
-                _currentModifyPlan = selectedPlan;
+                _currentModifyPlan = item.SourceTask;
 
-                // 回填数据到界面
                 dp.SelectedDate = _currentModifyPlan.PlanDate.Date;
                 cbTime.Text = _currentModifyPlan.PlanDate.ToString("HH:mm");
                 txt.Text = _currentModifyPlan.Content;
@@ -127,7 +151,6 @@ namespace DesktopPlanWidget
             }
         }
 
-        // 保存修改
         private void Update(object sender, RoutedEventArgs e)
         {
             try
@@ -156,16 +179,12 @@ namespace DesktopPlanWidget
                     return;
                 }
 
-                // 直接修改 _currentModifyPlan 对象的属性
                 _currentModifyPlan.PlanDate = dp.SelectedDate.Value.Date + TimeSpan.Parse(cbTime.Text);
                 _currentModifyPlan.Content = txt.Text.Trim();
                 _currentModifyPlan.RepeatType = (RepeatType)cbo.SelectedIndex;
                 _currentModifyPlan.Interval = i;
 
-                // 保存到文件
                 DataHelper.SavePlans(_plans);
-
-                // 刷新列表显示
                 RefreshList();
                 ClearEdit();
 
@@ -177,7 +196,6 @@ namespace DesktopPlanWidget
             }
         }
 
-        // 删除计划
         private void Del(object sender, RoutedEventArgs e)
         {
             try
@@ -185,10 +203,12 @@ namespace DesktopPlanWidget
                 Button btn = sender as Button;
                 if (btn == null) return;
 
-                PlanTask selectedPlan = btn.DataContext as PlanTask;
-                if (selectedPlan == null) return;
+                // 直接转包装类，不用反射
+                PlanDisplayItem item = btn.DataContext as PlanDisplayItem;
+                if (item == null) return;
 
-                // 确认删除
+                PlanTask selectedPlan = item.SourceTask;
+
                 MessageBoxResult result = MessageBox.Show(
                     $"确定要删除计划「{selectedPlan.Content}」吗？",
                     "确认删除",
@@ -201,11 +221,8 @@ namespace DesktopPlanWidget
                     DataHelper.SavePlans(_plans);
                     RefreshList();
 
-                    // 如果删除的是当前正在修改的计划，清空编辑框
                     if (_currentModifyPlan == selectedPlan)
-                    {
                         ClearEdit();
-                    }
 
                     MessageBox.Show("删除成功！", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
