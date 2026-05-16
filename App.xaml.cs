@@ -22,12 +22,19 @@ namespace DesktopPlanWidget
             base.OnStartup(e);
         }
 
-        // 判断进程是否存在
-        private bool IsProcessRunning()
+        /// <summary>
+        /// 判断是否已有同名进程在运行（用于实现单实例启动的简单检测）。
+        /// </summary>
+        /// <remarks>      
+        private static bool IsProcessRunning()
         {
+            // 获取当前进程（用于比较进程 Id 和进程名）
             var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+
+            // 根据当前进程的进程名查找系统中所有同名进程
             var processes = System.Diagnostics.Process.GetProcessesByName(currentProcess.ProcessName);
 
+            // 如果存在不同 Id 的同名进程，则说明已有另一个实例运行
             return processes.Any(p => p.Id != currentProcess.Id);
         }
     }
