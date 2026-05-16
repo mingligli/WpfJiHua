@@ -61,13 +61,12 @@
                         <TextBlock Text="文字透明度" Foreground="White" Margin="2,5,0,2" FontSize="12"/>
                         <Slider x:Name="sliderOpacity" Value="{Binding TextOpacity}" 
                                 Minimum="0.2" Maximum="1.0" Width="160" Margin="3"/>
-
-                        <Button x:Name="BtnBackupData" Content="备份数据" Foreground="White" Background="#555" Margin="1"/>
-                        <Button x:Name="BtnRestoreData" Content="恢复备份" Foreground="White" Background="#555" Margin="1"/>
-
                         <!-- 这里去掉了报错的事件绑定，已在后台代码统一绑定 -->
                         <CheckBox x:Name="chkAutoStart" Content="开机启动" Foreground="White" Margin="5,2"/>
-
+                        <Button x:Name="BtnBackupData" Content="备份数据" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnRestoreData" Content="恢复备份" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnEnterWebsite" Content="*进入官网*" Foreground="White" Background="#555" Margin="1"/>
+                        
                         <Button x:Name="BtnExit" Content="退出" Foreground="White" Background="#993333" Margin="1"/>
                     </StackPanel>
                 </Border>

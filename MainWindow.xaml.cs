@@ -135,6 +135,7 @@ namespace DesktopPlanWidget
             BtnExit.Click += (s, e) => Close();
             BtnBackupData.Click += (s, e) => BackupData();
             BtnRestoreData.Click += (s, e) => RestoreData();
+            BtnEnterWebsite.Click += (s, e) => EnterWebsite();
 
             // 窗口加载完成后执行初始化
             Loaded += (s, e) =>
@@ -177,6 +178,19 @@ namespace DesktopPlanWidget
                         SetWindowLong(h, GWL_EXSTYLE, style | WS_EX_TRANSPARENT);
                 }
             };
+        }
+        /// <summary>
+        /// 打开官网链接
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+        private void EnterWebsite()
+        {
+            //使用默认浏览器打开官网链接
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/mingligli/WpfJiHua.git", 
+                UseShellExecute = true
+            });
         }
 
         /// <summary>
