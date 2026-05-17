@@ -1,6 +1,10 @@
 项目介绍
 DesktopPlanWidget 是一款轻量级桌面计划管理挂件，专为需要高效管理日常日程、清晰查看待办事项的用户设计。程序以悬浮窗口形式呈现，支持鼠标穿透、桌面置底，不遮挡桌面图标和其他应用，同时具备计划管理、外观自定义、开机自启、数据备份恢复等实用功能，帮你轻松掌控每日日程，提升时间管理效率。
 核心定位：轻量、便捷、不打扰，让计划管理融入桌面，无需切换应用即可查看和操作待办事项。
+<img width="1576" height="992" alt="数据页面" src="https://github.com/user-attachments/assets/40dca50b-450a-4242-9f16-37f6bdab172c" />
+<img width="364" height="468" alt="菜单" src="https://github.com/user-attachments/assets/08bbac16-eefa-489a-ae61-f7bca610b07f" />
+<img width="2354" height="1478" alt="主图" src="https://github.com/user-attachments/assets/3b125e29-93e4-4413-a96b-dfcf19def011" />
+
 核心功能
 - 计划展示与管理：清晰展示未来指定天数的待办计划，支持计划新增、编辑、删除，勾选完成状态，自动排序显示。
 - 日期格式化展示：采用「公历+农历+星期」三合一显示方式，直观呈现计划日期，兼顾实用性与传统习惯。
