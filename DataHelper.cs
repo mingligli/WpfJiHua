@@ -168,24 +168,24 @@ namespace DesktopPlanWidget
         }
 
         /// <summary>
-        /// 生成下一次重复的计划任务
-        /// 用于过期的重复任务，自动生成下一个周期的新任务，并删除旧任务
+        /// 生成下一次重复的计划任务（全天模式）
+        /// 只关注日期，忽略时间部分。过期后自动生成下一个周期的新任务，并删除旧任务。
         /// </summary>
         public static void GenerateNextRepeatPlans()
         {
             var all = GetAllPlans();
             bool changed = false;
-            var now = DateTime.Now;
+            var today = DateTime.Now.Date;   // 今天的零点（忽略时间）
 
             // 倒序遍历，避免删除元素导致索引异常
             for (int i = all.Count - 1; i >= 0; i--)
             {
                 var p = all[i];
-                // 无重复类型 / 计划时间未到，跳过处理
+                // 无重复类型 或 计划日期（仅日期）大于今天 → 未过期，跳过
                 if (p.RepeatType == RepeatType.None) continue;
-                if (p.PlanDate > now) continue;
+                if (p.PlanDate.Date > today) continue;   // 改为日期比较
 
-                // 根据重复类型计算下一次执行时间
+                // 根据重复类型计算下一次执行时间（先按原时刻计算，再归一化到零点）
                 DateTime next = p.PlanDate;
                 switch (p.RepeatType)
                 {
@@ -205,11 +205,14 @@ namespace DesktopPlanWidget
                         next = next.AddYears(p.Interval);
                         break;
                 }
+                // 全天模式：只保留日期部分（时间归零）
+                next = next.Date;
 
-                // 确保下次时间至少晚于当前时间1分钟
-                if (next <= now) next = now.AddMinutes(1);
+                // 如果下一次日期 ≤ 今天（例如因为周期为0或时钟错误），则强制设为明天
+                if (next <= today)
+                    next = today.AddDays(1);
 
-                // 添加新的重复计划，标记为自动生成
+                // 添加新的重复计划（自动生成，时间为当天零点）
                 all.Add(new PlanTask
                 {
                     PlanDate = next,
@@ -223,7 +226,6 @@ namespace DesktopPlanWidget
                 changed = true;
             }
 
-            // 数据发生变更则保存
             if (changed) SavePlans(all);
         }
     }
