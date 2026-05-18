@@ -95,6 +95,8 @@ v1.0.0 初始版本
 本项目为免费开源软件，无任何收费功能，所有功能均免费向用户开放，持续维护与功能更新依赖社区支持。
 如果 DesktopPlanWidget 桌面计划挂件对你的日常日程管理有帮助，欢迎通过以下方式自愿支持开发者，你的支持将助力项目优化迭代、修复问题，带来更好的使用体验。
 👉 捐赠支持：
-1. 微信捐赠：绝对赤裸裸的金钱赞助，如果你有微信，请打开微信App，使用“扫一扫”付款。：扫描下方微信收款码<img width="40" height="40" alt="6e3a8abe6f07185fcb1e3701301de217" src="https://github.com/user-attachments/assets/179e18c6-004e-4ba4-bade-1a215966a800" />，可自定义捐赠金额，操作便捷，实时到账。
-2. 支付宝捐赠：也是赤裸裸的金钱赞助，如果你有手机支付宝，请打开支付宝，使用“扫一扫”付款。<img width="40" height="40" alt="b88005bd11ff2c767a8dcaac3e75136d" src="https://github.com/user-attachments/assets/fe8910df-d178-463e-8140-507766c54e8a" />，可自定义捐赠金额，操作便捷，实时到账。
+1. 微信捐赠：绝对赤裸裸的金钱赞助，如果你有微信，请打开微信App，使用“扫一扫”付款。扫描下方微信收款码，可自定义捐赠金额，操作便捷，实时到账。
+2. 支付宝捐赠：也是赤裸裸的金钱赞助，如果你有手机支付宝，请打开支付宝，使用“扫一扫”付款。可自定义捐赠金额，操作便捷，实时到账。
 温馨提示：捐赠为自愿行为，不影响软件正常使用，所有捐赠将全部用于项目维护、功能更新及问题修复，感谢每一份支持与认可。
+<img width="180" height="180" alt="6e3a8abe6f07185fcb1e3701301de217" src="https://github.com/user-attachments/assets/179e18c6-004e-4ba4-bade-1a215966a800" />
+<img width="180" height="180" alt="b88005bd11ff2c767a8dcaac3e75136d" src="https://github.com/user-attachments/assets/fe8910df-d178-463e-8140-507766c54e8a" />
