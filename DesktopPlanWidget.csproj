@@ -15,8 +15,17 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<DebugType>none</DebugType>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Remove="Images\alipay.png" />
+	  <None Remove="Images\wechat.png" />
+	</ItemGroup>
 	<ItemGroup>
 	  <Content Include="rili.ico" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Resource Include="Images\alipay.png" />
+	  <Resource Include="Images\wechat.png" />
 	</ItemGroup>
 	<ItemGroup>
 	  <None Update="Rili.png">

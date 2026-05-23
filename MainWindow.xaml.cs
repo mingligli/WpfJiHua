@@ -4,13 +4,15 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Input;
+using System.Windows.Media.Imaging;
+using System.Reflection;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace DesktopPlanWidget
@@ -179,24 +181,114 @@ namespace DesktopPlanWidget
                 }
             };
         }
-        /// <summary>
-        /// 打开官网链接
-        /// </summary>
-        /// <exception cref="NotImplementedException"></exception>
-        private void EnterWebsite()
-        {
-            //使用默认浏览器打开官网链接
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "https://github.com/mingligli/WpfJiHua.git", 
-                UseShellExecute = true
-            });
-        }
 
-        /// <summary>
-        /// 启动凌晨定时器：每天1点自动刷新重复计划
-        /// </summary>
-        private void StartMidnightTimer()
+
+/// <summary>
+/// 打开捐赠 & 源码界面（无报错·无外部文件·图片内嵌EXE）
+/// </summary>
+private void EnterWebsite()
+    {
+        Window win = new Window
+        {
+            Title = "支持项目",
+            Width = 450,
+            Height = 380,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            Background = Brushes.White,
+            WindowStyle = WindowStyle.ToolWindow,
+            ShowInTaskbar = false
+        };
+
+        Grid root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(50) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(60) });
+
+        // 标题栏
+        Grid titleBar = new Grid { Background = new SolidColorBrush(Color.FromRgb(0, 122, 204)) };
+        TextBlock title = new TextBlock
+        {
+            Text = "❤️ 赤裸裸的现金捐献，感谢您为国产免费软件贡献力量！",
+            Foreground = Brushes.White,
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        titleBar.Children.Add(title);
+        root.Children.Add(titleBar);
+
+        // 二维码容器
+        Grid qrContainer = new Grid { Margin = new Thickness(20) };
+        qrContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+        qrContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        qrContainer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+        Grid.SetRow(qrContainer, 1);
+
+        Border wx = CreateQrBox("微信支付", GetResourceImage("/Images/wechat.png"));
+        Border zfb = CreateQrBox("支付宝", GetResourceImage("/Images/alipay.png"));
+
+        Grid.SetColumn(wx, 0);
+        Grid.SetColumn(zfb, 2);
+        qrContainer.Children.Add(wx);
+        qrContainer.Children.Add(zfb);
+        root.Children.Add(qrContainer);
+
+        // 源码下载
+        TextBlock link = new TextBlock
+        {
+            Text = "🔗 源码新版下载",
+            Foreground = new SolidColorBrush(Color.FromRgb(0, 122, 204)),
+            FontSize = 15,
+            FontWeight = FontWeights.Medium,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Cursor = Cursors.Hand,
+            TextDecorations = TextDecorations.Underline
+        };
+        Grid.SetRow(link, 2);
+        root.Children.Add(link);
+
+        link.MouseLeftButtonUp += (s, e) =>
+        {
+            try { Process.Start(new ProcessStartInfo("https://github.com/mingligli/WpfJiHua.git") { UseShellExecute = true }); } catch { }
+        };
+
+        win.Content = root;
+        win.ShowDialog();
+    }
+
+    private BitmapImage GetResourceImage(string relativePath)
+    {
+        var uri = new Uri("pack://application:,,,/" + Assembly.GetExecutingAssembly().GetName().Name + ";component" + relativePath, UriKind.Absolute);
+        return new BitmapImage(uri);
+    }
+
+    private Border CreateQrBox(string title, ImageSource image)
+    {
+        Border border = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = new SolidColorBrush(Color.FromRgb(235, 235, 235)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10)
+        };
+
+        StackPanel sp = new StackPanel();
+        Image img = new Image { Source = image, Width = 150, Height = 150, Stretch = Stretch.Uniform };
+        TextBlock text = new TextBlock { Text = title, FontSize = 14, Foreground = Brushes.Gray, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
+
+        sp.Children.Add(img);
+        sp.Children.Add(text);
+        border.Child = sp;
+        return border;
+    }
+
+    /// <summary>
+    /// 启动凌晨定时器：每天1点自动刷新重复计划
+    /// </summary>
+    private void StartMidnightTimer()
         {
             _midnightTimer = new DispatcherTimer();
             _midnightTimer.Interval = TimeSpan.FromMinutes(1);

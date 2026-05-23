@@ -65,7 +65,7 @@
                         <CheckBox x:Name="chkAutoStart" Content="开机启动" Foreground="White" Margin="5,2"/>
                         <Button x:Name="BtnBackupData" Content="备份数据" Foreground="White" Background="#555" Margin="1"/>
                         <Button x:Name="BtnRestoreData" Content="恢复备份" Foreground="White" Background="#555" Margin="1"/>
-                        <Button x:Name="BtnEnterWebsite" Content="*进入官网*" Foreground="White" Background="#555" Margin="1"/>
+                        <Button x:Name="BtnEnterWebsite" Content="*开源*捐赠*" Foreground="White" Background="#555" Margin="1"/>
                         
                         <Button x:Name="BtnExit" Content="退出" Foreground="White" Background="#993333" Margin="1"/>
                     </StackPanel>
