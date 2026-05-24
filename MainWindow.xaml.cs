@@ -416,14 +416,26 @@ namespace DesktopPlanWidget
             Left = SystemParameters.WorkArea.Width - Width - 10;
             Top = 10;
         }
-
         /// <summary>
-        /// 刷新界面计划列表（读取数据并绑定到UI）
+        /// 获取未来 N 天内的计划，空的时候返回 "近期无日程"
         /// </summary>
-        private void RefreshList()
+        private List<PlanItem> GetPlanItemsWithEmptyText(int days)
         {
-            var list = DataHelper.GetCustomDaysPlans(_showDays).OrderBy(p => p.PlanDate).ToList();
+            var list = DataHelper.GetCustomDaysPlans(days).OrderBy(p => p.PlanDate).ToList();
             var result = new List<PlanItem>();
+
+            if (list.Count == 0)
+            {
+                // 空数据时返回一条“近期无日程”
+                result.Add(new PlanItem
+                {
+                    DisplayDate = "",
+                    Content = "📅 近期无日程"
+                });
+                return result;
+            }
+
+            // 有数据正常返回
             foreach (var p in list)
                 result.Add(new PlanItem
                 {
@@ -432,6 +444,21 @@ namespace DesktopPlanWidget
                     IsFinish = p.IsFinish,
                     DisplayDate = GetDisplayDate(p.PlanDate)
                 });
+
+            return result;
+        }
+        /// <summary>
+        /// 刷新界面计划列表（读取数据并绑定到UI）
+        /// </summary>
+        private void RefreshList()
+        {
+            // 原来的代码：
+            // var list = DataHelper.GetCustomDaysPlans(_showDays).OrderBy(p => p.PlanDate).ToList();
+
+            // 替换成：
+            var result = GetPlanItemsWithEmptyText(_showDays);
+
+            // 下面不变
             lstPlan.ItemsSource = result;
         }
 
