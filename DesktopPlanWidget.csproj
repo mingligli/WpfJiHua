@@ -1,39 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
-		<TargetFramework>net8.0-windows</TargetFramework>
-		<UseWPF>true</UseWPF>
-		<Nullable>disable</Nullable>
-	</PropertyGroup>
-	<PropertyGroup>
-		<ApplicationIcon>rili.ico</ApplicationIcon>
-		<Copyright>青岩软件工作室</Copyright>
-		<PackageIcon>Rili.png</PackageIcon>
-		<Description>桌面右上角显示一个自定义计划提示，第次启动或第二天8点更新一次重复数据，并删除过期数据。</Description>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-		<DebugType>none</DebugType>
-	</PropertyGroup>
-
-	<ItemGroup>
-	  <None Remove="Images\alipay.png" />
-	  <None Remove="Images\wechat.png" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Content Include="rili.ico" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Resource Include="Images\alipay.png" />
-	  <Resource Include="Images\wechat.png" />
-	</ItemGroup>
-	<ItemGroup>
-	  <None Update="Rili.png">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
-	</ItemGroup>
-	<Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-	  <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -File &quot;D:\VSCODE\mingligli\CleanEAZ_Gapotchenko.ps1&quot;" />
-	</Target>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>rili.ico</ApplicationIcon>
+    <Copyright>青岩软件工作室</Copyright>
+    <PackageIcon>Rili.png</PackageIcon>
+    <Description>桌面右上角显示一个自定义计划提示，第次启动或第二天8点更新一次重复数据，并删除过期数据。</Description>
+    <FileVersion>1.0.0.1</FileVersion>
+    <AssemblyVersion>1.0.0.1</AssemblyVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="Images\alipay.png" />
+    <None Remove="Images\wechat.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="rili.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\alipay.png" />
+    <Resource Include="Images\wechat.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Rili.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+  <Import Project="DesktopPlanWidget.dotnet_reactor.targets" Condition="Exists('DesktopPlanWidget.dotnet_reactor.targets')" />
 </Project>
