@@ -183,7 +183,7 @@ namespace DesktopPlanWidget
                 var p = all[i];
                 // 无重复类型 或 计划日期（仅日期）大于今天 → 未过期，跳过
                 if (p.RepeatType == RepeatType.None) continue;
-                if (p.PlanDate.Date > today) continue;   // 改为日期比较
+                if (p.PlanDate.Date >= today) continue;   // 改为日期比较
 
                 // 根据重复类型计算下一次执行时间（先按原时刻计算，再归一化到零点）
                 DateTime next = p.PlanDate;
