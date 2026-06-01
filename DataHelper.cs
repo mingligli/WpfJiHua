@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 
@@ -11,6 +12,8 @@ namespace DesktopPlanWidget
     /// </summary>
     public static class DataHelper
     {
+        private static readonly ChineseLunisolarCalendar LunarCalendar = new ChineseLunisolarCalendar();
+
         /// <summary>
         /// 计划任务存储文件名
         /// </summary>
@@ -29,17 +32,14 @@ namespace DesktopPlanWidget
         {
             try
             {
-                // 文件不存在，返回空列表
                 if (!File.Exists(PlanFile))
                     return new List<PlanTask>();
 
-                // 读取JSON文件并反序列化为计划任务集合
                 var json = File.ReadAllText(PlanFile);
                 return JsonSerializer.Deserialize<List<PlanTask>>(json) ?? new List<PlanTask>();
             }
             catch
             {
-                // 发生异常时返回空列表，保证程序不崩溃
                 return new List<PlanTask>();
             }
         }
@@ -52,9 +52,7 @@ namespace DesktopPlanWidget
         {
             try
             {
-                // 设置格式化缩进，让JSON文件更易读
                 var opt = new JsonSerializerOptions { WriteIndented = true };
-                // 序列化并写入文件
                 File.WriteAllText(PlanFile, JsonSerializer.Serialize(list, opt));
             }
             catch { }
@@ -68,19 +66,16 @@ namespace DesktopPlanWidget
         {
             try
             {
-                // 配置文件不存在，返回默认配置（开启开机自启）
                 if (!File.Exists(ConfigFile))
                 {
                     return new AppConfig { AutoStart = true };
                 }
 
-                // 读取并反序列化配置
                 var json = File.ReadAllText(ConfigFile);
                 return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig { AutoStart = true };
             }
             catch
             {
-                // 异常时返回默认配置
                 return new AppConfig { AutoStart = true };
             }
         }
@@ -108,7 +103,6 @@ namespace DesktopPlanWidget
         {
             var today = DateTime.Now.Date;
             var end = today.AddDays(days);
-            // 筛选出今日到N天后的所有计划
             return GetAllPlans().FindAll(p => p.PlanDate >= today && p.PlanDate <= end);
         }
 
@@ -121,13 +115,11 @@ namespace DesktopPlanWidget
         {
             try
             {
-                // 封装备份数据对象
                 var pack = new BackupPackage
                 {
                     Plans = GetAllPlans(),
                     Config = GetConfig()
                 };
-                // 序列化并写入备份文件
                 var json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(savePath, json);
                 return true;
@@ -147,12 +139,10 @@ namespace DesktopPlanWidget
         {
             try
             {
-                // 备份文件不存在，直接返回失败
                 if (!File.Exists(bakPath)) return false;
                 var json = File.ReadAllText(bakPath);
                 var pack = JsonSerializer.Deserialize<BackupPackage>(json);
 
-                // 数据不为空则覆盖保存本地数据
                 if (pack != null)
                 {
                     SavePlans(pack.Plans);
@@ -175,17 +165,14 @@ namespace DesktopPlanWidget
         {
             var all = GetAllPlans();
             bool changed = false;
-            var today = DateTime.Now.Date;   // 今天的零点（忽略时间）
+            var today = DateTime.Now.Date;
 
-            // 倒序遍历，避免删除元素导致索引异常
             for (int i = all.Count - 1; i >= 0; i--)
             {
                 var p = all[i];
-                // 无重复类型 或 计划日期（仅日期）大于今天 → 未过期，跳过
                 if (p.RepeatType == RepeatType.None) continue;
-                if (p.PlanDate.Date >= today) continue;   // 改为日期比较
+                if (p.PlanDate.Date >= today) continue;
 
-                // 根据重复类型计算下一次执行时间（先按原时刻计算，再归一化到零点）
                 DateTime next = p.PlanDate;
                 switch (p.RepeatType)
                 {
@@ -202,17 +189,15 @@ namespace DesktopPlanWidget
                         next = next.AddYears(p.Interval);
                         break;
                     case RepeatType.YearLunar:
-                        next = next.AddYears(p.Interval);
+                        next = GetNextLunarDate(p.PlanDate, p.Interval);
                         break;
                 }
-                // 全天模式：只保留日期部分（时间归零）
+
                 next = next.Date;
 
-                // 如果下一次日期 ≤ 今天（例如因为周期为0或时钟错误），则强制设为明天
                 if (next <= today)
                     next = today.AddDays(1);
 
-                // 添加新的重复计划（自动生成，时间为当天零点）
                 all.Add(new PlanTask
                 {
                     PlanDate = next,
@@ -221,12 +206,86 @@ namespace DesktopPlanWidget
                     Interval = p.Interval,
                     IsAutoRepeat = true
                 });
-                // 移除已过期的旧计划
                 all.RemoveAt(i);
                 changed = true;
             }
 
             if (changed) SavePlans(all);
+        }
+
+        /// <summary>
+        /// 根据给定的公历日期和农历年间隔，返回下一个农历日期对应的公历日期
+        /// </summary>
+        /// <param name="currentDate">当前公历日期（需对应农历生日）</param>
+        /// <param name="yearsToAdd">农历年偏移量（通常为1）</param>
+        /// <returns>下一个农历日期对应的公历零点</returns>
+        private static DateTime GetNextLunarDate(DateTime currentDate, int yearsToAdd)
+        {
+            // 获取当前日期的农历信息
+            int lunarYear = LunarCalendar.GetYear(currentDate);
+            int lunarMonth = LunarCalendar.GetMonth(currentDate);      // 1-12 正常，13 表示闰月
+            int lunarDay = LunarCalendar.GetDayOfMonth(currentDate);
+            int leapMonth = LunarCalendar.GetLeapMonth(lunarYear);      // 获取闰月，无闰月返回0
+
+            // 解析当前月份信息
+            int actualMonth = lunarMonth;
+            bool isLeap = false;
+            if (lunarMonth == 13)
+            {
+                isLeap = true;
+                actualMonth = leapMonth;                                // 闰月的实际月份值
+            }
+            else
+            {
+                // 处理闰月影响：如果当前月份大于闰月，则实际月份需要减1
+                if (leapMonth > 0 && lunarMonth > leapMonth)
+                    actualMonth = lunarMonth - 1;
+            }
+
+            // 计算目标农历年
+            int targetLunarYear = lunarYear + yearsToAdd;
+            int targetLeapMonth = LunarCalendar.GetLeapMonth(targetLunarYear);
+            int targetMonth = actualMonth;
+            bool targetIsLeap = false;
+
+            // 处理目标闰月
+            if (isLeap)
+            {
+                // 如果原日期是闰月，检查目标年是否有相同的闰月
+                if (targetLeapMonth == actualMonth)
+                {
+                    targetIsLeap = true;
+                    targetMonth = 13;   // 标记为闰月（用13表示）
+                }
+                // 否则降级为平月，targetMonth保持actualMonth即可
+            }
+            else
+            {
+                // 处理平月受闰月影响的情况
+                if (targetLeapMonth > 0 && actualMonth >= targetLeapMonth)
+                    targetMonth = actualMonth + 1;
+                else
+                    targetMonth = actualMonth;
+            }
+
+            // 获取目标农历月份的天数，处理日期溢出
+            int daysInMonth;
+            if (targetIsLeap)
+                daysInMonth = LunarCalendar.GetDaysInMonth(targetLunarYear, targetMonth);
+            else
+                daysInMonth = LunarCalendar.GetDaysInMonth(targetLunarYear, targetMonth);
+            int safeDay = Math.Min(lunarDay, daysInMonth);
+
+            // 转换为公历
+            try
+            {
+                return LunarCalendar.ToDateTime(targetLunarYear, targetMonth, safeDay, 0, 0, 0, 0);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // 最后的保险：如果转换失败，返回当前日期加一年（公历）
+                return currentDate.AddYears(yearsToAdd).Date;
+            }
         }
     }
 
