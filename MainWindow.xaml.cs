@@ -23,6 +23,8 @@ namespace DesktopPlanWidget
     /// </summary>
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
+        private DispatcherTimer _dateChangeTimer;
+        private DateTime _currentDisplayDate;
         #region 属性变更通知
         /// <summary>
         /// 属性变更事件（实现UI自动刷新）
@@ -125,6 +127,8 @@ namespace DesktopPlanWidget
             DataContext = this;
 
             // 加载配置并应用颜色样式
+            UpdateTitle();          // 初始化标题
+            StartDateMonitor();     // 启动日期变化监控
             LoadConfig();
             ApplyColor();
 
@@ -181,7 +185,30 @@ namespace DesktopPlanWidget
                 }
             };
         }
-
+        // 更新标题显示（包含当前星期几）
+        private void UpdateTitle()
+        {
+            // 获取当前中文星期几名称（例如“星期三”）
+            string weekDay = DateTime.Now.ToString("dddd", new CultureInfo("zh-CN"));
+            TitleTextBlock.Text = $"📅 {weekDay} 日程[BY:青岩]";
+            _currentDisplayDate = DateTime.Now.Date;
+        }
+        // 启动定时器，每天检查一次日期是否变更（避免长期运行不更新）
+        private void StartDateMonitor()
+        {
+            _dateChangeTimer = new DispatcherTimer();
+            // 每 1 小时检查一次（可根据需要调整间隔）
+            _dateChangeTimer.Interval = TimeSpan.FromHours(1);
+            _dateChangeTimer.Tick += (s, e) =>
+            {
+                // 如果日期已变化，则刷新标题
+                if (DateTime.Now.Date != _currentDisplayDate)
+                {
+                    UpdateTitle();
+                }
+            };
+            _dateChangeTimer.Start();
+        }
 
         /// <summary>
         /// 打开捐赠 & 源码界面（无报错·无外部文件·图片内嵌EXE）
