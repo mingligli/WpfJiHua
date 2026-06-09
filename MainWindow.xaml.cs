@@ -185,23 +185,77 @@ namespace DesktopPlanWidget
                 }
             };
         }
-        // 更新标题显示（包含当前星期几）
         private void UpdateTitle()
         {
-            // 获取当前中文星期几名称（例如“星期三”）
+            // 获取当前星期几（中文）
             string weekDay = DateTime.Now.ToString("dddd", new CultureInfo("zh-CN"));
-            TitleTextBlock.Text = $"📅 {weekDay} 日程[BY:青岩]";
+            // 获取农历日期
+            string lunarDate = GetChineseLunarDate(DateTime.Now);
+            // 组合标题
+            TitleTextBlock.Text = $"📅 {weekDay}<{lunarDate}> [By:青岩]";
             _currentDisplayDate = DateTime.Now.Date;
         }
-        // 启动定时器，每天检查一次日期是否变更（避免长期运行不更新）
+        /// <summary>
+        /// 获取日期的农历表示（例如“闰四月初五”）
+        /// </summary>
+        /// <summary>
+        /// 获取日期的农历表示（例如“四月十五”）
+        /// </summary>
+        private string GetChineseLunarDate(DateTime date)
+        {
+            ChineseLunisolarCalendar lunarCalendar = new ChineseLunisolarCalendar();
+            int year = lunarCalendar.GetYear(date);
+            int month = lunarCalendar.GetMonth(date);
+            int day = lunarCalendar.GetDayOfMonth(date);
+
+            // 获取该农历年的闰月月份（0表示无闰月）
+            int leapMonth = lunarCalendar.GetLeapMonth(year);
+
+            // 格式化农历月份显示
+            string monthName;
+            if (leapMonth > 0 && month > leapMonth)
+            {
+                // 实际月份比闰月大时，月份序号要减1，因为闰月占用了一个数字位置
+                monthName = GetChineseMonth(month - 1);
+            }
+            else if (leapMonth > 0 && month == leapMonth + 1)
+            {
+                // 当前月份正好是闰月
+                monthName = "闰" + GetChineseMonth(leapMonth);
+            }
+            else
+            {
+                monthName = GetChineseMonth(month);
+            }
+
+            string dayName = GetChineseDay(day);
+            return $"{monthName}{dayName}";
+        }
+
+        private string GetChineseMonth(int month)
+        {
+            string[] monthNames = { "正月", "二月", "三月", "四月", "五月", "六月",
+                                    "七月", "八月", "九月", "十月", "十一月", "十二月" };
+            return monthNames[month - 1];
+        }
+
+        private string GetChineseDay(int day)
+        {
+            string[] dayNames = {
+                "初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
+                "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
+                "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"
+            };
+            return dayNames[day - 1];
+        }
+
+        // 启动定时器，每天检查日期是否变更（跨天自动更新）
         private void StartDateMonitor()
         {
             _dateChangeTimer = new DispatcherTimer();
-            // 每 1 小时检查一次（可根据需要调整间隔）
-            _dateChangeTimer.Interval = TimeSpan.FromHours(1);
+            _dateChangeTimer.Interval = TimeSpan.FromHours(1); // 每小时检查一次
             _dateChangeTimer.Tick += (s, e) =>
             {
-                // 如果日期已变化，则刷新标题
                 if (DateTime.Now.Date != _currentDisplayDate)
                 {
                     UpdateTitle();
